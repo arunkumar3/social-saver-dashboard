@@ -1,14 +1,15 @@
 "use client";
 
 import { Bookmark } from "@/lib/types";
-import { truncate } from "@/lib/utils";
+import { truncate, getCategoryColor } from "@/lib/utils";
 
 interface ActionItemsViewProps {
   bookmarks: Bookmark[];
   onToggle: (id: string, status: "pending" | "done" | "skipped") => void;
+  onMarkAllDone: () => void;
 }
 
-export function ActionItemsView({ bookmarks, onToggle }: ActionItemsViewProps) {
+export function ActionItemsView({ bookmarks, onToggle, onMarkAllDone }: ActionItemsViewProps) {
   const actionBookmarks = bookmarks
     .filter((b) => b.action_item)
     .sort((a, b) => {
@@ -16,13 +17,15 @@ export function ActionItemsView({ bookmarks, onToggle }: ActionItemsViewProps) {
       return order[a.action_status] - order[b.action_status];
     });
 
+  const pendingCount = actionBookmarks.filter((b) => b.action_status === "pending").length;
+
   if (actionBookmarks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="mb-3 text-4xl">✅</div>
-        <p className="text-lg font-medium text-gray-400">No action items</p>
+        <p className="text-lg font-medium text-gray-400">No action items yet</p>
         <p className="mt-1 text-sm text-gray-500">
-          Action items will appear here when AI processing identifies them
+          Save and categorize bookmarks to see tasks here.
         </p>
       </div>
     );
@@ -30,6 +33,21 @@ export function ActionItemsView({ bookmarks, onToggle }: ActionItemsViewProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-2 p-4">
+      {/* Mark all done button */}
+      {pendingCount > 0 && (
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm text-gray-400">
+            {pendingCount} pending action{pendingCount !== 1 ? "s" : ""}
+          </span>
+          <button
+            onClick={onMarkAllDone}
+            className="rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-surface-3 hover:text-white"
+          >
+            Mark all done
+          </button>
+        </div>
+      )}
+
       {actionBookmarks.map((bookmark) => {
         const isDone = bookmark.action_status === "done";
         const isSkipped = bookmark.action_status === "skipped";
@@ -81,6 +99,15 @@ export function ActionItemsView({ bookmarks, onToggle }: ActionItemsViewProps) {
                 From: {truncate(bookmark.title, 60)} — {bookmark.author_handle?.startsWith("@") ? bookmark.author_handle : `@${bookmark.author_handle}`}
               </p>
             </div>
+
+            {/* Category badge */}
+            {bookmark.category && (
+              <span
+                className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${getCategoryColor(bookmark.category)}`}
+              >
+                {bookmark.category}
+              </span>
+            )}
 
             {/* Status badge */}
             <span

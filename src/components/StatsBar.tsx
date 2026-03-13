@@ -1,12 +1,15 @@
 "use client";
 
+import { getCategoryColor } from "@/lib/utils";
+
 interface StatsBarProps {
   total: number;
   typeCounts: { tweet: number; thread: number; article: number };
   pendingActions: number;
+  topCategory: { name: string; count: number } | null;
 }
 
-export function StatsBar({ total, typeCounts, pendingActions }: StatsBarProps) {
+export function StatsBar({ total, typeCounts, pendingActions, topCategory }: StatsBarProps) {
   return (
     <div className="border-b border-gray-800 bg-surface-2 px-6 py-4">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6">
@@ -21,6 +24,22 @@ export function StatsBar({ total, typeCounts, pendingActions }: StatsBarProps) {
           value={pendingActions}
           color={pendingActions > 0 ? "text-amber-400" : "text-gray-400"}
         />
+        {topCategory && (
+          <>
+            <div className="h-8 w-px bg-gray-700" />
+            <div className="flex items-center gap-2">
+              <div>
+                <p className="text-xs text-gray-400">Top Category</p>
+                <p className="flex items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryColor(topCategory.name)}`}>
+                    {topCategory.name}
+                  </span>
+                  <span className="text-sm font-semibold text-gray-300">{topCategory.count}</span>
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

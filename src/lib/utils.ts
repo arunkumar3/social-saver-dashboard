@@ -35,6 +35,22 @@ export function getTypeIcon(type: string): string {
   }
 }
 
+export function getCategoryColor(category: string): string {
+  if (category.startsWith("AI/ML")) return "bg-emerald-500/15 text-emerald-400";
+  if (category.startsWith("Trading")) return "bg-amber-500/15 text-amber-400";
+  if (category.startsWith("AI Project")) return "bg-violet-500/15 text-violet-400";
+  if (category.startsWith("Career")) return "bg-pink-500/15 text-pink-400";
+  return "bg-gray-500/15 text-gray-400";
+}
+
+export function getCategoryDot(category: string): string {
+  if (category.startsWith("AI/ML")) return "bg-emerald-400";
+  if (category.startsWith("Trading")) return "bg-amber-400";
+  if (category.startsWith("AI Project")) return "bg-violet-400";
+  if (category.startsWith("Career")) return "bg-pink-400";
+  return "bg-gray-400";
+}
+
 export function getTypeColor(type: string): string {
   switch (type) {
     case "tweet":

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { FilterState } from "@/lib/types";
-import { getTypeIcon } from "@/lib/utils";
+import { getTypeIcon, getCategoryColor } from "@/lib/utils";
 
 interface FilterSidebarProps {
   filters: FilterState;
@@ -13,6 +14,12 @@ interface FilterSidebarProps {
 }
 
 const TYPES = ["tweet", "thread", "article"] as const;
+const MAIN_CATEGORIES = [
+  "AI/ML & Tech",
+  "Trading & Finance",
+  "AI Project Ideas",
+  "Career & Productivity",
+];
 const ACTION_STATUSES = [
   { value: null, label: "All" },
   { value: "pending", label: "Pending" },
@@ -28,6 +35,16 @@ export function FilterSidebar({
   open,
   onClose,
 }: FilterSidebarProps) {
+  const [otherExpanded, setOtherExpanded] = useState(false);
+
+  // Split categories into main and other
+  const mainCats = categories.filter((c) =>
+    MAIN_CATEGORIES.some((mc) => c.startsWith(mc.split(" ")[0]))
+  );
+  const otherCats = categories.filter(
+    (c) => !MAIN_CATEGORIES.some((mc) => c.startsWith(mc.split(" ")[0]))
+  );
+
   function toggleType(type: string) {
     const next = new Set(filters.types);
     if (next.has(type)) next.delete(type);
@@ -39,6 +56,17 @@ export function FilterSidebar({
     const next = new Set(filters.categories);
     if (next.has(cat)) next.delete(cat);
     else next.add(cat);
+    onFilterChange({ ...filters, categories: next });
+  }
+
+  function toggleAllOther() {
+    const next = new Set(filters.categories);
+    const allSelected = otherCats.every((c) => next.has(c));
+    if (allSelected) {
+      otherCats.forEach((c) => next.delete(c));
+    } else {
+      otherCats.forEach((c) => next.add(c));
+    }
     onFilterChange({ ...filters, categories: next });
   }
 
@@ -96,8 +124,9 @@ export function FilterSidebar({
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
             Category
           </h3>
-          <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-            {categories.map((cat) => (
+          <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+            {/* Main categories */}
+            {mainCats.map((cat) => (
               <label
                 key={cat}
                 className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-surface-3"
@@ -108,9 +137,56 @@ export function FilterSidebar({
                   onChange={() => toggleCategory(cat)}
                   className="accent-brand-blue"
                 />
+                <span className={`inline-block h-2 w-2 rounded-full ${getCategoryColor(cat).split(" ")[0].replace("/15", "")}`} />
                 <span className="text-gray-300">{cat}</span>
               </label>
             ))}
+
+            {/* Other categories — grouped */}
+            {otherCats.length > 0 && (
+              <div className="mt-1">
+                <button
+                  onClick={() => setOtherExpanded(!otherExpanded)}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1 text-sm text-gray-400 hover:bg-surface-3 hover:text-gray-200"
+                >
+                  <span className="text-[10px]">{otherExpanded ? "▼" : "▶"}</span>
+                  <span>Other ({otherCats.length})</span>
+                </button>
+
+                {otherExpanded && (
+                  <div className="ml-2 mt-1 flex flex-col gap-1 border-l border-gray-700 pl-2">
+                    {/* Toggle all others */}
+                    <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-surface-3">
+                      <input
+                        type="checkbox"
+                        checked={otherCats.every(
+                          (c) => filters.categories.size === 0 || filters.categories.has(c)
+                        )}
+                        onChange={toggleAllOther}
+                        className="accent-brand-blue"
+                      />
+                      <span className="text-gray-400 italic">Select all</span>
+                    </label>
+                    {otherCats.map((cat) => (
+                      <label
+                        key={cat}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-surface-3"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filters.categories.size === 0 || filters.categories.has(cat)}
+                          onChange={() => toggleCategory(cat)}
+                          className="accent-brand-blue"
+                        />
+                        <span className="text-gray-300">
+                          {cat.startsWith("Other: ") ? cat.slice(7) : cat}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
