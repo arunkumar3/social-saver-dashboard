@@ -31,7 +31,7 @@ export function DashboardShell() {
     const { data, error: fetchError } = await supabase
       .from("bookmarks")
       .select("*")
-      .order("saved_at", { ascending: false });
+      .order("source_date", { ascending: false, nullsFirst: false });
 
     if (fetchError) {
       setError("Couldn't connect to database. Check your connection and try again.");
@@ -56,11 +56,25 @@ export function DashboardShell() {
   const stats = useMemo(() => {
     const typeCounts = { tweet: 0, thread: 0, article: 0 };
     let pendingActions = 0;
+    const categoryCounts: Record<string, number> = {};
+
     for (const b of bookmarks) {
       if (b.type in typeCounts) typeCounts[b.type as keyof typeof typeCounts]++;
       if (b.action_item && b.action_status === "pending") pendingActions++;
+      if (b.category) {
+        categoryCounts[b.category] = (categoryCounts[b.category] || 0) + 1;
+      }
     }
-    return { total: bookmarks.length, typeCounts, pendingActions };
+
+    // Find top category
+    let topCategory: { name: string; count: number } | null = null;
+    for (const [name, count] of Object.entries(categoryCounts)) {
+      if (!topCategory || count > topCategory.count) {
+        topCategory = { name, count };
+      }
+    }
+
+    return { total: bookmarks.length, typeCounts, pendingActions, topCategory };
   }, [bookmarks]);
 
   // Get unique categories
@@ -118,6 +132,31 @@ export function DashboardShell() {
       .eq("id", id);
     if (error) {
       // Revert on failure
+      fetchBookmarks();
+    }
+  }
+
+  // Mark all pending action items as done (single batch request)
+  async function handleMarkAllDone() {
+    const pendingIds = bookmarks
+      .filter((b) => b.action_item && b.action_status === "pending")
+      .map((b) => b.id);
+
+    if (pendingIds.length === 0) return;
+
+    // Optimistic update
+    setBookmarks((prev) =>
+      prev.map((b) =>
+        pendingIds.includes(b.id) ? { ...b, action_status: "done" as const } : b
+      )
+    );
+
+    const { error } = await supabase
+      .from("bookmarks")
+      .update({ action_status: "done" })
+      .in("id", pendingIds);
+
+    if (error) {
       fetchBookmarks();
     }
   }
@@ -181,6 +220,7 @@ export function DashboardShell() {
         total={stats.total}
         typeCounts={stats.typeCounts}
         pendingActions={stats.pendingActions}
+        topCategory={stats.topCategory}
       />
 
       <div className="flex">
@@ -214,6 +254,7 @@ export function DashboardShell() {
             <ActionItemsView
               bookmarks={filteredBookmarks}
               onToggle={handleActionToggle}
+              onMarkAllDone={handleMarkAllDone}
             />
           )}
         </main>

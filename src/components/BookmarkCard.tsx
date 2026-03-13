@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark } from "@/lib/types";
-import { formatTimeAgo, truncate, getTypeIcon, getTypeColor } from "@/lib/utils";
+import { formatTimeAgo, truncate, getTypeIcon, getTypeColor, getCategoryColor } from "@/lib/utils";
 
 interface BookmarkCardProps {
   bookmark: Bookmark;
@@ -10,8 +10,25 @@ interface BookmarkCardProps {
   onActionToggle: (id: string, status: "pending" | "done" | "skipped") => void;
 }
 
+function CheckboxIcon({ checked }: { checked: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      {checked && (
+        <path
+          d="M2.5 6l2.5 2.5 4.5-5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  );
+}
+
 export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }: BookmarkCardProps) {
-  const nextStatus = bookmark.action_status === "done" ? "pending" : "done";
+  const isDone = bookmark.action_status === "done";
+  const nextStatus = isDone ? "pending" : "done";
 
   return (
     <div
@@ -38,7 +55,7 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
             {bookmark.author_handle?.startsWith("@") ? bookmark.author_handle : `@${bookmark.author_handle}`}
           </span>
           <span className="ml-auto text-xs text-gray-500">
-            {formatTimeAgo(bookmark.saved_at)}
+            {formatTimeAgo(bookmark.source_date || bookmark.saved_at)}
           </span>
         </div>
 
@@ -47,33 +64,40 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
           {bookmark.title}
         </h3>
 
-        {/* Bottom row: badges */}
+        {/* Bottom row: category badge + action item with inline checkbox */}
         <div className="flex flex-wrap items-center gap-2">
           {bookmark.category && (
-            <span className="rounded-full bg-brand-blue/15 px-2 py-0.5 text-[11px] font-medium text-brand-blue">
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${getCategoryColor(bookmark.category)}`}>
               {bookmark.category}
             </span>
           )}
           {bookmark.action_item && (
             <span
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                bookmark.action_status === "done"
+              onClick={(e) => {
+                e.stopPropagation();
+                onActionToggle(bookmark.id, nextStatus);
+              }}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
+                isDone
                   ? "bg-green-500/15 text-green-400"
                   : bookmark.action_status === "pending"
                   ? "bg-amber-500/15 text-amber-400"
                   : "bg-gray-500/15 text-gray-400"
               }`}
             >
+              {/* Inline checkbox */}
               <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${
-                  bookmark.action_status === "done"
-                    ? "bg-green-400"
-                    : bookmark.action_status === "pending"
-                    ? "bg-amber-400"
-                    : "bg-gray-400"
+                className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border transition ${
+                  isDone
+                    ? "border-green-500 bg-green-500 text-black"
+                    : "border-gray-500"
                 }`}
-              />
-              {truncate(bookmark.action_item, 40)}
+              >
+                <CheckboxIcon checked={isDone} />
+              </span>
+              <span className={isDone ? "line-through opacity-60" : ""}>
+                {truncate(bookmark.action_item, 35)}
+              </span>
             </span>
           )}
         </div>
@@ -82,6 +106,15 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
       {/* Expanded details */}
       {isExpanded && (
         <div className="border-t border-gray-800 p-4">
+          {/* Larger category badge */}
+          {bookmark.category && (
+            <div className="mb-4">
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getCategoryColor(bookmark.category)}`}>
+                {bookmark.category}
+              </span>
+            </div>
+          )}
+
           {/* Full text */}
           <div className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-300">
             {bookmark.full_text}
@@ -101,9 +134,9 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
             </div>
           )}
 
-          {/* Key insights */}
+          {/* Key insights — with left border accent */}
           {bookmark.key_insights && bookmark.key_insights.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-4 border-l-2 border-brand-blue pl-3">
               <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Key Insights
               </h4>
@@ -118,39 +151,48 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
             </div>
           )}
 
-          {/* Action item */}
+          {/* Action item with pending/done/skip toggle */}
           {bookmark.action_item && (
-            <div className="mb-4 flex items-center gap-3 rounded-lg bg-surface-3 p-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onActionToggle(bookmark.id, nextStatus);
-                }}
-                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition ${
-                  bookmark.action_status === "done"
-                    ? "border-green-500 bg-green-500 text-black"
-                    : "border-gray-600 hover:border-brand-blue"
-                }`}
-              >
-                {bookmark.action_status === "done" && (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path
-                      d="M2.5 6l2.5 2.5 4.5-5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </button>
-              <span
-                className={`text-sm ${
-                  bookmark.action_status === "done" ? "text-gray-500 line-through" : "text-gray-200"
-                }`}
-              >
-                {bookmark.action_item}
-              </span>
+            <div className="mb-4 rounded-lg bg-surface-3 p-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onActionToggle(bookmark.id, isDone ? "pending" : "done");
+                  }}
+                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition ${
+                    isDone
+                      ? "border-green-500 bg-green-500 text-black"
+                      : "border-gray-600 hover:border-brand-blue"
+                  }`}
+                >
+                  <CheckboxIcon checked={isDone} />
+                </button>
+                <span
+                  className={`flex-1 text-sm ${
+                    isDone ? "text-gray-500 line-through" : "text-gray-200"
+                  }`}
+                >
+                  {bookmark.action_item}
+                </span>
+                {/* Skip button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onActionToggle(
+                      bookmark.id,
+                      bookmark.action_status === "skipped" ? "pending" : "skipped"
+                    );
+                  }}
+                  className={`rounded px-2 py-0.5 text-[11px] font-medium transition ${
+                    bookmark.action_status === "skipped"
+                      ? "bg-gray-500/20 text-gray-300"
+                      : "text-gray-500 hover:bg-gray-500/10 hover:text-gray-300"
+                  }`}
+                >
+                  {bookmark.action_status === "skipped" ? "Unskip" : "Skip"}
+                </button>
+              </div>
             </div>
           )}
 
