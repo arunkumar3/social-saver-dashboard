@@ -31,7 +31,7 @@ export function DashboardShell() {
     const { data, error: fetchError } = await supabase
       .from("bookmarks")
       .select("*")
-      .order("saved_at", { ascending: false });
+      .order("source_date", { ascending: false, nullsFirst: false });
 
     if (fetchError) {
       setError("Couldn't connect to database. Check your connection and try again.");

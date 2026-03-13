@@ -38,7 +38,7 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
             {bookmark.author_handle?.startsWith("@") ? bookmark.author_handle : `@${bookmark.author_handle}`}
           </span>
           <span className="ml-auto text-xs text-gray-500">
-            {formatTimeAgo(bookmark.saved_at)}
+            {formatTimeAgo(bookmark.source_date || bookmark.saved_at)}
           </span>
         </div>
 
