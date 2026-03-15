@@ -30,15 +30,21 @@ export function DashboardShell() {
     setError(null);
     const { data, error: fetchError } = await supabase
       .from("bookmarks")
-      .select("*")
-      .order("source_date", { ascending: false, nullsFirst: false });
+      .select("*");
 
     if (fetchError) {
       setError("Couldn't connect to database. Check your connection and try again.");
       setLoading(false);
       return;
     }
-    setBookmarks(data || []);
+    // Sort by source_date (original tweet date), falling back to saved_at for
+    // bookmarks without a source_date (e.g. saved via mobile/oEmbed).
+    const sorted = (data || []).sort((a, b) => {
+      const dateA = new Date(a.source_date || a.saved_at).getTime();
+      const dateB = new Date(b.source_date || b.saved_at).getTime();
+      return dateB - dateA;
+    });
+    setBookmarks(sorted);
     setLoading(false);
   }, []);
 
