@@ -142,13 +142,20 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // ── Auth: check shared secret ──
+  // ── Auth: accept x-ssp-key, apikey, or Authorization Bearer ──
+  // iOS Shortcuts sends apikey header; curl/extension sends x-ssp-key
   const mobileKey = Deno.env.get("SSP_MOBILE_KEY");
-  if (mobileKey) {
-    const providedKey = req.headers.get("x-ssp-key");
-    if (providedKey !== mobileKey) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
+  const providedSspKey = req.headers.get("x-ssp-key");
+  const providedApiKey = req.headers.get("apikey");
+  const providedAuthBearer = req.headers.get("authorization")?.replace("Bearer ", "");
+
+  // At least one valid credential must be present
+  const hasValidSspKey = mobileKey && providedSspKey === mobileKey;
+  const hasApiKey = !!providedApiKey; // Supabase gateway already validates apikey
+  const hasBearer = !!providedAuthBearer;
+
+  if (!hasValidSspKey && !hasApiKey && !hasBearer) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   try {
