@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Bookmark } from "@/lib/types";
-import { formatTimeAgo, truncate, getTypeIcon, getTypeColor, getCategoryColor } from "@/lib/utils";
+import { formatTimeAgo, truncate, getTypeIcon, getTypeColor, getCategoryColor, formatForClipboard, generatePDFHtml } from "@/lib/utils";
 
 interface BookmarkCardProps {
   bookmark: Bookmark;
@@ -27,8 +28,30 @@ function CheckboxIcon({ checked }: { checked: boolean }) {
 }
 
 export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }: BookmarkCardProps) {
+  const [copied, setCopied] = useState(false);
   const isDone = bookmark.action_status === "done";
   const nextStatus = isDone ? "pending" : "done";
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = formatForClipboard(bookmark);
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPDF = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const html = generatePDFHtml(bookmark);
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    const sanitized = bookmark.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+    win.document.title = sanitized;
+    win.onafterprint = () => win.close();
+    setTimeout(() => win.print(), 300);
+  };
 
   return (
     <div
@@ -196,21 +219,44 @@ export function BookmarkCard({ bookmark, isExpanded, onExpand, onActionToggle }:
             </div>
           )}
 
-          {/* Footer: open original */}
+          {/* Footer: open original + copy/pdf buttons */}
           <div className="flex items-center justify-between">
             {bookmark.source_date && (
               <span className="text-xs text-gray-500">
                 Originally posted {formatTimeAgo(bookmark.source_date)}
               </span>
             )}
-            <a
-              href={bookmark.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto text-sm text-brand-blue hover:underline"
-            >
-              Open Original →
-            </a>
+            <div className="ml-auto flex items-center gap-3">
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-400 transition hover:bg-gray-800 hover:text-gray-200"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                </svg>
+                {copied ? "Copied!" : "Copy"}
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-400 transition hover:bg-gray-800 hover:text-gray-200"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                PDF
+              </button>
+              <a
+                href={bookmark.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-brand-blue hover:underline"
+              >
+                Open Original →
+              </a>
+            </div>
           </div>
         </div>
       )}
